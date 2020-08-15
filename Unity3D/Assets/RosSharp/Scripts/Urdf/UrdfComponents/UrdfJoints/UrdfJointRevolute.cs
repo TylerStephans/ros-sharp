@@ -31,7 +31,7 @@ namespace RosSharp.Urdf
         public static UrdfJoint Create(GameObject linkObject)
         {
             UrdfJointRevolute urdfJoint = linkObject.AddComponent<UrdfJointRevolute>();
-
+            urdfJoint._jointType = JointTypes.Revolute;
             urdfJoint.UnityJoint = linkObject.AddComponent<HingeJoint>();
             urdfJoint.UnityJoint.autoConfigureConnectedAnchor = true;
             ((HingeJoint)urdfJoint.UnityJoint).useLimits = true;
