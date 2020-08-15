@@ -13,6 +13,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Added support for applying velocity and effort commands, and replaced references to the angle property
+// of the hinge joint with a manually calculated corrected angle.
+// 2020, Tyler Stephans (tbs5111@psu.edu)
+
 using System;
 using UnityEngine;
 
@@ -20,6 +24,8 @@ namespace RosSharp.Urdf
 {
     public class UrdfJointRevolute : UrdfJoint
     {
+        private float rosEffort = 0f;
+
         public override JointTypes JointType => JointTypes.Revolute;
         
         public static UrdfJoint Create(GameObject linkObject)
@@ -30,6 +36,8 @@ namespace RosSharp.Urdf
             urdfJoint.UnityJoint.autoConfigureConnectedAnchor = true;
             ((HingeJoint)urdfJoint.UnityJoint).useLimits = true;
             linkObject.AddComponent<HingeJointLimitsManager>();
+            // add custom angle calculation
+            linkObject.AddComponent<CorrectHingeAngle>();
 
             return urdfJoint;
         }
@@ -38,23 +46,40 @@ namespace RosSharp.Urdf
         
         public override float GetPosition()
         {
-            return -((HingeJoint)UnityJoint).angle * Mathf.Deg2Rad;
+            // return -((HingeJoint)UnityJoint).angle * Mathf.Deg2Rad;
+            return -GetComponent<CorrectHingeAngle>().Angle() * Mathf.Deg2Rad; ;
         }
-
         public override float GetVelocity()
         {
-            return -((HingeJoint)UnityJoint).velocity * Mathf.Deg2Rad;
+            //return -((HingeJoint)UnityJoint).velocity * Mathf.Deg2Rad;
+            return -GetComponent<CorrectHingeAngle>().Velocity() * Mathf.Deg2Rad;
         }
-
         public override float GetEffort()
         {
-            return -((HingeJoint)UnityJoint).motor.force;
+            return rosEffort;
         }
 
         protected override void OnUpdateJointState(float deltaState)
         {
             Quaternion rot = Quaternion.AngleAxis(-deltaState * Mathf.Rad2Deg, UnityJoint.axis);
             transform.rotation = transform.rotation * rot;
+            //((HingeJoint)UnityJoint).gameObject.GetComponent<Rigidbody>().MoveRotation(transform.rotation * rot);
+        }
+        protected override void OnUpdateJointCmdEff(float newCommand)
+        {
+            rosEffort = newCommand;
+            var worldAxis = transform.TransformVector(((HingeJoint)UnityJoint).axis);
+            var effort = newCommand * worldAxis.normalized;
+
+            ((HingeJoint)UnityJoint).gameObject.GetComponent<Rigidbody>().AddTorque(-effort);
+            if (((HingeJoint)UnityJoint).connectedBody != null)
+                ((HingeJoint)UnityJoint).connectedBody.AddTorque(effort);
+        }
+        protected override void OnUpdateJointCmdVel(float newCommand)
+        {
+            JointMotor jointMotor = ((HingeJoint)UnityJoint).motor;
+            jointMotor.targetVelocity = newCommand;
+            ((HingeJoint)UnityJoint).motor = jointMotor;
         }
 
         #endregion

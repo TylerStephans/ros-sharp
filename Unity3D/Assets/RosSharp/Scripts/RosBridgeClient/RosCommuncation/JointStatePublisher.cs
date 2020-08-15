@@ -13,6 +13,9 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
+// Modified so that the publisher could be run at a desired frequency in *simulation* time
+// 2020, Tyler Stephans (tbs5111@psu.edu)
+
 using System.Collections.Generic;
 
 namespace RosSharp.RosBridgeClient
@@ -22,19 +25,42 @@ namespace RosSharp.RosBridgeClient
         public List<JointStateReader> JointStateReaders;
         public string FrameId = "Unity";
 
+        [UnityEngine.Tooltip("Will publish every FixedUpdate if 0 or too large.")]
+        public float publishFrequency = 0f;
+        private float nStepsWait;   // Number of physics steps to wait each time before publishing
+        private float stepsRemaining;      // Number of steps remaining before publishing. If < 1 then publish
+
         private MessageTypes.Sensor.JointState message;    
         
         protected override void Start()
         {
+            if (1f / publishFrequency < UnityEngine.Time.fixedDeltaTime)    //If desired frequency is too large, then set to publish every fixed update instead.
+            {
+                UnityEngine.Debug.LogWarning("Specified publishing frequency is too large. Will publish on every FixedUpdate().");
+                nStepsWait = 1f;
+            }
+            else if (publishFrequency > 0)
+                nStepsWait = 1f / UnityEngine.Time.fixedDeltaTime / publishFrequency;
+            else // If the published frequency is negative or zero
+                nStepsWait = 1f;
+            stepsRemaining = nStepsWait;
+
             base.Start();
             InitializeMessage();
         }
-
+        
         private void FixedUpdate()
         {
-            UpdateMessage();
+            //Update message approximately at desired frequency
+            stepsRemaining--;
+            if (stepsRemaining < 1)
+            {
+                stepsRemaining += nStepsWait;
+                UpdateMessage();
+            }
+            
         }
-
+        
         private void InitializeMessage()
         {
             int jointStateLength = JointStateReaders.Count;

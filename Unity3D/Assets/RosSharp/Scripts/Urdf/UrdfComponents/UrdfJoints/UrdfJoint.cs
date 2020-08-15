@@ -12,6 +12,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 */
+// Added support for effort and velocity commands
+// 2020, Tyler Stephans (tbs5111@psu.edu)
 
 using System;
 using UnityEngine;
@@ -123,10 +125,23 @@ namespace RosSharp.Urdf
         }
         protected virtual void OnUpdateJointState(float deltaState) { }
 
+        // Forward velocity commands
+        public void UpdateJointCmdVel(float newCommand)
+        {
+            OnUpdateJointCmdVel(newCommand);
+        }
+        protected virtual void OnUpdateJointCmdVel(float newCommand) { }
+
+        // Forward effort commands
+        public void UpdateJointCmdEff(float newCommand)
+        {
+            OnUpdateJointCmdEff(newCommand);
+        }
+        protected virtual void OnUpdateJointCmdEff(float newCommand) { }
         #endregion
 
         #region Import Helpers
-        
+
         public static JointTypes GetJointType(string jointType)
         {
             switch (jointType)
