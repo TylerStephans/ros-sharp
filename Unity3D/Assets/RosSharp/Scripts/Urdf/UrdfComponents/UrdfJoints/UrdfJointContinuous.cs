@@ -15,6 +15,8 @@ limitations under the License.
 
 // Added support for applying velocity and effort commands, and replaced references to the angle property
 // of the hinge joint with a manually calculated corrected angle.
+// Added ability to return effort command instead of motor force.
+//  *WARNING* JointCommandWriter.writingCommands should be checked before using GetCmdEffort.
 // 2020, Tyler Stephans (tbs5111@psu.edu)
 
 using UnityEngine;
@@ -24,8 +26,6 @@ namespace RosSharp.Urdf
     public class UrdfJointContinuous : UrdfJoint
     {
         private float rosEffort;
-
-        public override JointTypes JointType => JointTypes.Continuous;
 
         public static UrdfJoint Create(GameObject linkObject)
         {
@@ -52,6 +52,10 @@ namespace RosSharp.Urdf
             return -GetComponent<CorrectHingeAngle>().Velocity() * Mathf.Deg2Rad;
         }
         public override float GetEffort()
+        {
+            return -((HingeJoint)UnityJoint).motor.force;
+        }
+        public override float GetCmdEffort()
         {
             return rosEffort;
         }

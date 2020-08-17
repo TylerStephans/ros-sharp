@@ -119,6 +119,11 @@ namespace RosSharp.Urdf
         {
             return 0;
         }
+        // For returning effort command directly
+        public virtual float GetCmdEffort()
+        {
+            return 0;
+        }
 
         public void UpdateJointState(float deltaState)
         {

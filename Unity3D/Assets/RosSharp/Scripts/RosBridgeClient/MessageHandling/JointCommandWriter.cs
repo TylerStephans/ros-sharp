@@ -14,12 +14,13 @@ namespace RosSharp.RosBridgeClient
         private UrdfJoint urdfJoint;
 
         [Tooltip("How long to wait for a new command before the old command is no longer written to the joint.")]
-        public float commandTimer = 0.1f;
+        public float commandTimer = 0.5f;
 
         private float timeLastCommand;
         private float newCommand;
         private float curCommand;
-        private bool NewCommandReceived;
+        private bool newCommandReceived;
+        public bool isWritingCommands { get; private set; }
 
         private JointCommandSubscriber.availableCommands commandToWrite;
 
@@ -28,20 +29,26 @@ namespace RosSharp.RosBridgeClient
             timeLastCommand = -commandTimer - 1.0f; // Make sure a command is not written until at least the first one is received.
             urdfJoint = GetComponent<UrdfJoint>();
         }
+
         //Update the command to the joint on every physics iteration.
         private void FixedUpdate()
         {
-            if (NewCommandReceived)
+            if (newCommandReceived)
             {
                 curCommand = newCommand;
-                NewCommandReceived = false;
+                timeLastCommand = Time.fixedTime;
+                newCommandReceived = false;
+                isWritingCommands = true;
+                WriteUpdate();
             }
-            else if (Time.fixedTime - timeLastCommand >= commandTimer)
+            else if (Time.fixedTime - timeLastCommand < commandTimer)
             {
-                // If no new command was recieved within commandTimer seconds, change command to zero. Otherwise rewrite command.
-                curCommand = 0f;
+                // If no new command was recieved, then continue writing previous command until commandTimer seconds have passed.
+                isWritingCommands = true;
+                WriteUpdate();
             }
-            WriteUpdate();
+            else
+                isWritingCommands = false;
         }
 
         private void WriteUpdate()
@@ -61,8 +68,8 @@ namespace RosSharp.RosBridgeClient
         {
             newCommand = command;
             commandToWrite = selectedCommand;
-            NewCommandReceived = true;
-            timeLastCommand = Time.fixedTime;
+            newCommandReceived = true;
+            Debug.Log("Writing command for " + urdfJoint.JointName);
         }
     }
 }
